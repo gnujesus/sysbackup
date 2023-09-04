@@ -1,0 +1,80 @@
+#! /bin/sh
+
+# If there's a second monitor connected, then run command
+# Take into account that DP-2 is an arbitrary name, which could change depending on the laptop or the 2nd monitor
+# Run xrandr -q to see the connected monitors, and `xrandr -q | grep -w` connected to see the connected monitors
+if [[ $(xrandr -q | grep 'DP-2 connected') ]]; then
+  xrandr --output DP-2 --auto --right-of eDP-1
+fi
+
+
+
+pgrep -x sxhkd > /dev/null || sxhkd &
+
+
+if [[ $(xrandr -q | grep 'DP-2 connected') ]]; then
+  bspc monitor eDP-1 -d I II III IV V VI VII VIII IX X 
+  bspc monitor DP-2 -d XI XII XIII XIV XV XVI XVII XVIII XIX XX
+else 
+  bspc monitor eDP-1 -d I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI XVII XVIII XIX XX
+fi
+
+
+bspc config border_width         2
+bspc config window_gap          12
+
+bspc config split_ratio          0.52
+bspc config borderless_monocle   true
+bspc config gapless_monocle      true
+
+# bspc rule -a Gimp desktop='^8' state=floating follow=on
+bspc rule -a Chromium desktop='^2'
+bspc rule -a mplayer2 state=floating
+bspc rule -a Kupfer.py focus=on
+bspc rule -a Screenkey manage=off
+
+# AutoStart Apps
+
+#keybinds
+sxhkd &
+dunst &
+
+#polybar
+$HOME/.config/polybar/launch.sh
+
+#keybinds for caps and esc
+xmodmap -e "clear lock" &
+xmodmap -e "keycode 9 = Caps_Lock NoSymbol Caps_Lock" & 
+xmodmap -e "keycode 66 = Escape NoSymbol Escape" &
+
+#picom and bg
+#nitrogen --restore &
+feh --bg-scale ~/Pictures/TheVoid.png &
+#picom --config $HOME/.config/picom/picom.conf &
+picom -CGb &
+
+#network
+nm-applet &
+
+
+#fix java bugs
+#!/bin/bash
+
+# Fix X window manager name properties to work around java bugs with
+# non-reparenting window managers.  This is a different solution from
+# the wmname utility provided by suckless, as it is NetWM compatible,
+# while wmname sets the value of _NET_SUPPORTING_WM_CHECK to root win.
+
+IRONIC_WM_NAME="LG3D"
+NET_WIN=$(xprop -root _NET_SUPPORTING_WM_CHECK | awk -F "# " '{print $2}')
+
+if [[ "$NET_WIN" == 0x* ]]; then
+    # xprop cannot reliably set UTF8_STRING, so we replace as string.
+    # fortunately, jdk is OK with this, but wm-spec says use UTF8_STRING.
+    xprop -id "$NET_WIN" -remove _NET_WM_NAME
+    xprop -id "$NET_WIN" -f _NET_WM_NAME 8s -set _NET_WM_NAME "$IRONIC_WM_NAME"
+else
+    # even if we're not net compatible, do java workaround
+    xprop -root -remove _NET_WM_NAME
+    xprop -root -f _NET_WM_NAME 8s -set _NET_WM_NAME "$IRONIC_WM_NAME"
+fi
